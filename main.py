@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 import random
+import re
 import asyncio
 import os
 import sys
@@ -56,11 +57,12 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
+    logger.info("Database initialized successfully")
 
-def is_admin(update):
+def is_admin(update: Update) -> bool:
     return update.effective_user and update.effective_user.id in ADMIN_IDS
 
-async def start(update, context):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update) or update.effective_chat.type != "private":
         await update.message.reply_text("❌ You are not authorized.")
         return
@@ -78,24 +80,24 @@ async def start(update, context):
         parse_mode="Markdown"
     )
 
-async def start_creation_flow(update, context):
+async def start_creation_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data.clear()
     await query.message.reply_text("🔗 Step 1/4: Send the Giveaway Link:")
     return LINK
 
-async def reg_link(update, context):
+async def reg_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['ga_link'] = update.message.text.strip()
     await update.message.reply_text("💰 Step 2/4: Enter Prize Amount:")
     return PRIZE
 
-async def reg_prize(update, context):
+async def reg_prize(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['ga_prize'] = update.message.text.strip()
     await update.message.reply_text("🎖️ Step 3/4: Enter Tasks:")
     return TASK
 
-async def reg_task(update, context):
+async def reg_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['ga_task'] = update.message.text.strip()
     keyboard = [[InlineKeyboardButton("⏩ Skip Notice", callback_data="skip_notice")]]
     await update.message.reply_text(
@@ -127,7 +129,7 @@ def compile_main_post(user_data):
 def compile_counter_post(giveaway_id, prize):
     return f"Entries: 0\n\nClick below to participate! 👇"
 
-async def handle_notice(update, context):
+async def handle_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['ga_notice'] = update.message.text.strip()
     preview_text = compile_main_post(context.user_data)
     context.user_data['ga_main_post'] = preview_text
@@ -135,14 +137,11 @@ async def handle_notice(update, context):
         [InlineKeyboardButton("🚀 Publish Both Posts", callback_data="publish_now")],
         [InlineKeyboardButton("❌ Cancel", callback_data="panel_cancel")]
     ]
-    await update.message.reply_text(
-        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts' to go live!",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
+    msg = f"👀 Main Post Preview:\n\n{'─' * 20}\n{preview_text}\n{'─' * 20}\n\nClick 'Publish Both Posts' to proceed."
+    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
     return CONFIRM
 
-async def skip_notice(update, context):
+async def skip_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data['ga_notice'] = ""
@@ -152,14 +151,11 @@ async def skip_notice(update, context):
         [InlineKeyboardButton("🚀 Publish Both Posts", callback_data="publish_now")],
         [InlineKeyboardButton("❌ Cancel", callback_data="panel_cancel")]
     ]
-    await query.message.reply_text(
-        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts' to go live!",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
+    msg = f"👀 Main Post Preview:\n\n{'─' * 20}\n{preview_text}\n{'─' * 20}\n\nClick 'Publish Both Posts' to proceed."
+    await query.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
     return CONFIRM
 
-async def publish_giveaway(update, context):
+async def publish_giveaway(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     prize_val = context.user_data.get('ga_prize', 'Giveaway')
@@ -190,10 +186,8 @@ async def publish_giveaway(update, context):
         cursor.execute("UPDATE giveaways SET message_id = ?, chat_id = ?, main_post_id = ?, counter_post_id = ? WHERE giveaway_id = ?",
             (main_msg.message_id, main_msg.chat_id, main_msg.message_id, counter_msg.message_id, giveaway_id))
         conn.commit()
-        await query.message.reply_text(
-            f"✅ Success! Both posts published!\n\n🆔 Giveaway ID: `{giveaway_id}`\n📝 Main Post: https://t.me/SabbirGA/{main_msg.message_id}\n📊 Counter Post: https://t.me/SabbirGA/{counter_msg.message_id}",
-            parse_mode="Markdown"
-        )
+        success_msg = f"✅ Success! Both posts published!\n\n🆔 Giveaway ID: `{giveaway_id}`\n📝 Main Post: https://t.me/SabbirGA/{main_msg.message_id}\n📊 Counter Post: https://t.me/SabbirGA/{counter_msg.message_id}"
+        await query.message.reply_text(success_msg, parse_mode="Markdown")
     except Exception as e:
         logger.error(f"Error publishing giveaway: {e}")
         await query.message.reply_text(f"❌ Failed to publish: {str(e)}")
@@ -225,7 +219,7 @@ async def update_participant_counter(chat_id, message_id, giveaway_id, context):
     finally:
         conn.close()
 
-async def button_click(update, context):
+async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query.data.startswith("join_"):
         giveaway_id = int(query.data.split("_")[1])
@@ -259,7 +253,7 @@ async def button_click(update, context):
         await query.answer("📸 Please send your proof screenshot as a photo message.", show_alert=True)
         context.user_data['submitting_proof'] = giveaway_id
 
-async def handle_proof(update, context):
+async def handle_proof(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'submitting_proof' not in context.user_data:
         return
     giveaway_id = context.user_data['submitting_proof']
@@ -299,13 +293,13 @@ async def handle_proof(update, context):
     finally:
         conn.close()
 
-async def draw_menu(update, context):
+async def draw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT g.giveaway_id, g.prize, COUNT(p.user_id) as entry_count FROM giveaways g LEFT JOIN participants p ON g.giveaway_id = p.giveaway_id WHERE g.status = 'active' GROUP BY g.giveaway_id")
+        cursor.execute("SELECT g.giveaway_id, g.prize, COUNT(p.user_id) as entry_count FROM giveaways g LEFT JOIN participants p ON g.giveaway_id = p.giveaway_id WHERE g.status = 'active' GROUP BY g.giveaway_id ORDER BY g.giveaway_id DESC")
         giveaways = cursor.fetchall()
         if not giveaways:
             await query.message.reply_text("❌ No active giveaways found.")
@@ -325,7 +319,7 @@ async def draw_menu(update, context):
     finally:
         conn.close()
 
-async def draw_winner(update, context):
+async def draw_winner(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     giveaway_id = int(query.data.split("_")[2])
@@ -365,13 +359,13 @@ async def draw_winner(update, context):
     finally:
         conn.close()
 
-async def view_statistics(update, context):
+async def view_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT g.giveaway_id, g.prize, g.status, COUNT(p.user_id) as entry_count, COUNT(CASE WHEN p.proof_message_id IS NOT NULL THEN 1 END) as proof_count, g.winner_id, g.winner_username FROM giveaways g LEFT JOIN participants p ON g.giveaway_id = p.giveaway_id GROUP BY g.giveaway_id ORDER BY g.giveaway_id DESC")
+        cursor.execute("SELECT g.giveaway_id, g.prize, g.status, COUNT(p.user_id) as entry_count, COUNT(CASE WHEN p.proof_message_id IS NOT NULL THEN 1 END) as proof_count, g.winner_id, g.winner_username FROM giveaways g LEFT JOIN participants p ON g.giveaway_id = p.giveaway_id GROUP BY g.giveaway_id ORDER BY g.giveaway_id DESC LIMIT 10")
         rows = cursor.fetchall()
         if not rows:
             await query.message.reply_text("📭 No giveaways found.")
@@ -392,7 +386,7 @@ async def view_statistics(update, context):
     finally:
         conn.close()
 
-async def test_channel_connection(update, context):
+async def test_channel_connection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     try:
@@ -403,7 +397,7 @@ async def test_channel_connection(update, context):
     except Exception as e:
         await query.message.reply_text(f"❌ Connection Failed!\n\nError: `{str(e)}`")
 
-async def back_to_menu(update, context):
+async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     keyboard = [
@@ -419,7 +413,7 @@ async def back_to_menu(update, context):
         parse_mode="Markdown"
     )
 
-async def cancel_flow(update, context):
+async def cancel_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query:
         await query.answer()
@@ -427,7 +421,8 @@ async def cancel_flow(update, context):
     context.user_data.clear()
     return ConversationHandler.END
 
-def main():
+async def main():
+    """Start the bot with proper async handling for python-telegram-bot v20+"""
     try:
         init_db()
         logger.info("✅ Database initialized")
@@ -472,12 +467,23 @@ def main():
     logger.info(f"📢 Channel: @SabbirGA")
     logger.info("=" * 50)
     
-    application.run_polling()
+    async with application:
+        await application.start()
+        await application.updater.start_polling()
+        logger.info("Bot is polling...")
+        try:
+            await asyncio.Event().wait()
+        except KeyboardInterrupt:
+            logger.info("Bot stopped by user")
+        finally:
+            await application.updater.stop()
+            await application.stop()
 
 if __name__ == '__main__':
     try:
-        main()
+        asyncio.run(main())
     except KeyboardInterrupt:
         print("\nBot stopped")
     except Exception as e:
         print(f"Error: {e}")
+        logger.exception("Fatal error occurred")
