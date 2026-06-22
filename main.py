@@ -138,7 +138,7 @@ async def handle_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("❌ Cancel", callback_data="panel_cancel")]
     ]
     await update.message.reply_text(
-        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts'",
+        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts' to proceed.",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
@@ -155,7 +155,7 @@ async def skip_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("❌ Cancel", callback_data="panel_cancel")]
     ]
     await query.message.reply_text(
-        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts'",
+        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts' to proceed.",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
