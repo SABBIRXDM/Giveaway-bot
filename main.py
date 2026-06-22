@@ -138,7 +138,7 @@ async def handle_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("❌ Cancel", callback_data="panel_cancel")]
     ]
     await update.message.reply_text(
-        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts' to go live!",
+        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts'",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
@@ -155,7 +155,7 @@ async def skip_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("❌ Cancel", callback_data="panel_cancel")]
     ]
     await query.message.reply_text(
-        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts' to go live!",
+        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts'",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
@@ -193,7 +193,8 @@ async def publish_giveaway(update: Update, context: ContextTypes.DEFAULT_TYPE):
             (main_msg.message_id, main_msg.chat_id, main_msg.message_id, counter_msg.message_id, giveaway_id))
         conn.commit()
         await query.message.reply_text(
-            f"✅ Success! Both posts published!\n\n🆔 Giveaway ID: `{giveaway_id}`\n📝 Main Post: https://t.me/SabbirGA/{main_msg.message_id}\n📊 Counter Post: https://t.me/SabbirGA/{counter_msg.message_id}"
+            f"✅ Success! Both posts published!\n\n🆔 Giveaway ID: `{giveaway_id}`\n📝 Main Post: https://t.me/SabbirGA/{main_msg.message_id}\n📊 Counter Post: https://t.me/SabbirGA/{counter_msg.message_id}",
+            parse_mode="Markdown"
         )
     except Exception as e:
         logger.error(f"Error publishing giveaway: {e}")
@@ -306,7 +307,7 @@ async def draw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT g.giveaway_id, g.prize, COUNT(p.user_id) as entry_count FROM giveaways g LEFT JOIN participants p ON g.giveaway_id = p.giveaway_id WHERE g.status = 'active' GROUP BY g.giveaway_id ORDER BY g.giveaway_id DESC")
+        cursor.execute("SELECT g.giveaway_id, g.prize, COUNT(p.user_id) as entry_count FROM giveaways g LEFT JOIN participants p ON g.giveaway_id = p.giveaway_id WHERE g.status = 'active' GROUP BY g.giveaway_id")
         giveaways = cursor.fetchall()
         if not giveaways:
             await query.message.reply_text("❌ No active giveaways found.")
@@ -428,18 +429,22 @@ async def cancel_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     return ConversationHandler.END
 
-def main():
+async def main():
+    """Start the bot with proper async handling for python-telegram-bot v20+"""
     try:
         init_db()
         logger.info("✅ Database initialized")
     except Exception as e:
         logger.error(f"Database init error: {e}")
+        return
+
     try:
         application = Application.builder().token(BOT_TOKEN).build()
         logger.info("✅ Application built")
     except Exception as e:
         logger.error(f"Application build error: {e}")
         return
+
     conv_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_creation_flow, pattern="^panel_create$")],
         states={
@@ -451,6 +456,7 @@ def main():
         },
         fallbacks=[CallbackQueryHandler(cancel_flow, pattern="^panel_cancel$"), CommandHandler("start", start)]
     )
+    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(conv_handler)
     application.add_handler(CallbackQueryHandler(view_statistics, pattern="^panel_stats$"))
@@ -461,18 +467,31 @@ def main():
     application.add_handler(CallbackQueryHandler(draw_winner, pattern="^draw_now_"))
     application.add_handler(CallbackQueryHandler(test_channel_connection, pattern="^test_channel$"))
     application.add_handler(MessageHandler(filters.PHOTO, handle_proof))
+    
     logger.info("=" * 50)
     logger.info("✅ Giveaway Bot is running!")
     logger.info("=" * 50)
     logger.info(f"👥 Admin IDs: {ADMIN_IDS}")
     logger.info(f"📢 Channel: @SabbirGA")
     logger.info("=" * 50)
-    application.run_polling()
+    
+    async with application:
+        await application.start()
+        await application.updater.start_polling()
+        logger.info("Bot is polling...")
+        try:
+            await asyncio.Event().wait()
+        except KeyboardInterrupt:
+            logger.info("Bot stopped by user")
+        finally:
+            await application.updater.stop()
+            await application.stop()
 
 if __name__ == '__main__':
     try:
-        main()
+        asyncio.run(main())
     except KeyboardInterrupt:
-        print("Bot stopped")
+        print("\nBot stopped")
     except Exception as e:
         print(f"Error: {e}")
+        logger.exception("Fatal error occurred")
