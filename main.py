@@ -137,11 +137,8 @@ async def handle_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🚀 Publish Both Posts", callback_data="publish_now")],
         [InlineKeyboardButton("❌ Cancel", callback_data="panel_cancel")]
     ]
-    await update.message.reply_text(
-        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts' to proceed.",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
+    msg = f"👀 Main Post Preview:\n\n{'─' * 20}\n{preview_text}\n{'─' * 20}\n\nClick 'Publish Both Posts' to proceed."
+    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
     return CONFIRM
 
 async def skip_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -154,11 +151,8 @@ async def skip_notice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🚀 Publish Both Posts", callback_data="publish_now")],
         [InlineKeyboardButton("❌ Cancel", callback_data="panel_cancel")]
     ]
-    await query.message.reply_text(
-        f"👀 Main Post Preview:\n\n───────────────────\n{preview_text}\n───────────────────\n\nClick 'Publish Both Posts' to proceed.",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
+    msg = f"👀 Main Post Preview:\n\n{'─' * 20}\n{preview_text}\n{'─' * 20}\n\nClick 'Publish Both Posts' to proceed."
+    await query.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
     return CONFIRM
 
 async def publish_giveaway(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -192,10 +186,8 @@ async def publish_giveaway(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cursor.execute("UPDATE giveaways SET message_id = ?, chat_id = ?, main_post_id = ?, counter_post_id = ? WHERE giveaway_id = ?",
             (main_msg.message_id, main_msg.chat_id, main_msg.message_id, counter_msg.message_id, giveaway_id))
         conn.commit()
-        await query.message.reply_text(
-            f"✅ Success! Both posts published!\n\n🆔 Giveaway ID: `{giveaway_id}`\n📝 Main Post: https://t.me/SabbirGA/{main_msg.message_id}\n📊 Counter Post: https://t.me/SabbirGA/{counter_msg.message_id}",
-            parse_mode="Markdown"
-        )
+        success_msg = f"✅ Success! Both posts published!\n\n🆔 Giveaway ID: `{giveaway_id}`\n📝 Main Post: https://t.me/SabbirGA/{main_msg.message_id}\n📊 Counter Post: https://t.me/SabbirGA/{counter_msg.message_id}"
+        await query.message.reply_text(success_msg, parse_mode="Markdown")
     except Exception as e:
         logger.error(f"Error publishing giveaway: {e}")
         await query.message.reply_text(f"❌ Failed to publish: {str(e)}")
