@@ -6,10 +6,7 @@ import asyncio
 import os
 import sys
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler, 
-    MessageHandler, filters, ContextTypes, ConversationHandler
-)
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 
 # Logging setup
 logging.basicConfig(
@@ -21,7 +18,7 @@ logger = logging.getLogger(__name__)
 # ============ CONFIGURATION ============
 BOT_TOKEN = "8834781488:AAFGY0h5QLvDd9rU_WiqeGfYsgpP5GEVq8Q"
 ADMIN_IDS = [6691026525, 8128047950]  
-CHANNEL_ID = -1003993806005  # @SabbirGA
+CHANNEL_ID = -1003993806005
 
 # Conversation states
 LINK, PRIZE, TASK, NOTICE, CONFIRM = range(5)
@@ -72,7 +69,7 @@ def init_db():
 def is_admin(update: Update) -> bool:
     return update.effective_user and update.effective_user.id in ADMIN_IDS
 
-# ============ START COMMAND ============
+# ============ START ============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update) or update.effective_chat.type != "private":
         await update.message.reply_text("❌ You are not authorized.")
@@ -90,7 +87,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"👋 **Welcome to Giveaway Bot!**\n\n"
         f"📌 **Channel:** @SabbirGA\n"
-        f"🆔 **Channel ID:** `{CHANNEL_ID}`\n\n"
         f"Select an option:",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
@@ -255,8 +251,6 @@ async def publish_giveaway(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     return ConversationHandler.END
 
-# ============ BUTTON HANDLERS ============
-
 async def update_participant_counter(chat_id, message_id, giveaway_id, context):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -387,8 +381,6 @@ async def handle_proof(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         conn.close()
 
-# ============ DRAW WINNER ============
-
 async def draw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -505,8 +497,6 @@ async def draw_winner(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         conn.close()
 
-# ============ STATISTICS ============
-
 async def view_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -556,8 +546,6 @@ async def view_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         conn.close()
 
-# ============ TEST CHANNEL ============
-
 async def test_channel_connection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -576,8 +564,6 @@ async def test_channel_connection(update: Update, context: ContextTypes.DEFAULT_
         await context.bot.delete_message(chat_id=CHANNEL_ID, message_id=test_msg.message_id)
     except Exception as e:
         await query.message.reply_text(f"❌ **Connection Failed!**\n\nError: `{str(e)}`")
-
-# ============ BACK TO MENU ============
 
 async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -608,9 +594,7 @@ async def cancel_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 # ============ MAIN ============
-
 def main():
-    """Main function"""
     try:
         init_db()
         logger.info("✅ Database initialized")
@@ -660,11 +644,12 @@ def main():
     logger.info(f"📢 Channel: @SabbirGA")
     logger.info("=" * 50)
     
-    try:
-        application.run_polling()
-    except Exception as e:
-        logger.error(f"Polling error: {e}")
-        sys.exit(1)
+    application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Bot stopped")
+    except Exception as e:
+        print(f"Error: {e}")
